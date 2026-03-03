@@ -1,0 +1,1 @@
+I created a Transaction model to track borrowing history, prevent duplicate checkouts, and maintain proper record of return dates instead of modifying the Book model directly.
