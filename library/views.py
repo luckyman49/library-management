@@ -1,18 +1,17 @@
 from django.utils import timezone
+from django.db import transaction
 
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
-from rest_framework.permissions import IsAuthenticated, IsAdminUser, SAFE_METHODS
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import SearchFilter
 
 from .models import Book, Transaction
 from .serializers import BookSerializer, TransactionSerializer
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-
 
 # -------------------------
 # Transaction ViewSet
@@ -31,35 +30,23 @@ class TransactionViewSet(ReadOnlyModelViewSet):
 class BookViewSet(ModelViewSet):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
-    permission_classes = [IsAuthenticated]
-
-
-
-class BookViewSet(ModelViewSet):
-    queryset = Book.objects.all()
-    serializer_class = BookSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['available']
+    search_fields = ['title', 'author']
+    ordering_fields = ['published_date', 'title']
 
     def get_permissions(self):
         if self.action in ['checkout', 'return_book']:
             return [IsAuthenticated()]
-
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAdminUser()]
-
         return [IsAuthenticated()]
-
-
-
-
-    # Filtering & Searching
-    filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['available_copies']
-    search_fields = ['title', 'author']
 
     # -------------------------
     # Checkout Book
     # -------------------------
     @action(detail=True, methods=['post'])
+    @transaction.atomic
     def checkout(self, request, pk=None):
         book = self.get_object()
 
@@ -99,11 +86,12 @@ class BookViewSet(ModelViewSet):
     # Return Book
     # -------------------------
     @action(detail=True, methods=['post'])
+    @transaction.atomic
     def return_book(self, request, pk=None):
         book = self.get_object()
 
         try:
-            transaction = Transaction.objects.get(
+            transaction_record = Transaction.objects.get(
                 user=request.user,
                 book=book,
                 returned=False
@@ -114,9 +102,9 @@ class BookViewSet(ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        transaction.returned = True
-        transaction.return_date = timezone.now()
-        transaction.save()
+        transaction_record.returned = True
+        transaction_record.return_date = timezone.now()
+        transaction_record.save()
 
         book.available_copies += 1
         book.save()
