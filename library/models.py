@@ -7,7 +7,7 @@ class Book(models.Model):
     isbn = models.CharField(max_length=13, unique=True)
     published_date = models.DateField()
     copies_available = models.PositiveIntegerField()
-
+    available_copies = models.IntegerField(default=1)
     def __str__(self):
         return self.title
     
