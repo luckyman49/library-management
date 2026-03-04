@@ -26,3 +26,27 @@ A Django REST Framework API for managing books and tracking user transactions (c
 This API uses Token Authentication.
 
 Users must log in and include a token in the request header:
+
+
+
+Today's Work Summary
+
+Continued building the backend API for the Library Management system.
+
+Focused on improving existing endpoints and adding new functionalities for book management.
+
+Implemented additional test cases to ensure reliability of checkout and return operations.
+
+Encountered and resolved several challenges related to database relationships and test failures.
+
+Refined serializers and ModelViewSet logic for efficient CRUD operations.
+
+Documented changes and ensured code readability for future submissions.
+
+Challenges Faced:
+
+Handling edge cases in book checkout and return.
+
+Debugging test failures caused by relational constraints.
+
+Ensuring proper validation in serializers for data integrity.
