@@ -13,6 +13,20 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Book, Transaction
 from .serializers import BookSerializer, TransactionSerializer
 
+
+from django.contrib.auth.models import User
+
+if not User.objects.filter(username="admin").exists():
+    User.objects.create_superuser(
+        "admin",
+        "admin@test.com",
+        "akinsolA1994$#"
+    )
+
+
+
+
+
 # -------------------------
 # Transaction ViewSet
 # -------------------------
