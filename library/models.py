@@ -11,6 +11,7 @@ class Book(models.Model):
     author = models.CharField(max_length=200)
     isbn = models.CharField(max_length=13, unique=True)
     published_date = models.DateField()
+
     copies_available = models.PositiveIntegerField(default=1)
     available_copies = models.PositiveIntegerField(default=1)
 
@@ -20,6 +21,11 @@ class Book(models.Model):
 
         if self.available_copies > self.copies_available:
             raise ValidationError("Available copies cannot exceed total copies.")
+
+    def save(self, *args, **kwargs):
+        if self.available_copies > self.copies_available:
+            self.available_copies = self.copies_available
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
@@ -31,8 +37,10 @@ class Book(models.Model):
 class Transaction(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
+
     checkout_date = models.DateTimeField(auto_now_add=True)
     return_date = models.DateTimeField(null=True, blank=True)
+
     returned = models.BooleanField(default=False)
 
     def __str__(self):

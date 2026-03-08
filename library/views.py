@@ -2,7 +2,6 @@ from django.utils import timezone
 from django.db import transaction
 
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
@@ -12,31 +11,20 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Book, Transaction
 from .serializers import BookSerializer, TransactionSerializer
-
-
-from django.contrib.auth.models import User
-
-if not User.objects.filter(username="admin").exists():
-    User.objects.create_superuser(
-        "admin",
-        "admin@test.com",
-        "akinsolA1994$#"
-    )
-
-
-
+from .permissions import IsAdminOrReadOnly, IsAuthenticatedUser   # <-- use our new rules
 
 
 # -------------------------
 # Transaction ViewSet
 # -------------------------
 class TransactionViewSet(ReadOnlyModelViewSet):
-    queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedUser]   # only logged-in users
 
     def get_queryset(self):
+        # Only return transactions for the logged-in user
         return Transaction.objects.filter(user=self.request.user)
+
 
 # -------------------------
 # Book ViewSet
@@ -44,17 +32,12 @@ class TransactionViewSet(ReadOnlyModelViewSet):
 class BookViewSet(ModelViewSet):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
+    permission_classes = [IsAdminOrReadOnly]   # admins can add/delete, others read-only
+
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['available']
+    filterset_fields = ['available_copies']
     search_fields = ['title', 'author']
     ordering_fields = ['published_date', 'title']
-
-    def get_permissions(self):
-        if self.action in ['checkout', 'return_book']:
-            return [IsAuthenticated()]
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAdminUser()]
-        return [IsAuthenticated()]
 
     # -------------------------
     # Checkout Book
@@ -62,9 +45,11 @@ class BookViewSet(ModelViewSet):
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def checkout(self, request, pk=None):
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+
         book = self.get_object()
 
-        # Prevent duplicate checkout
         existing_transaction = Transaction.objects.filter(
             user=request.user,
             book=book,
@@ -83,18 +68,11 @@ class BookViewSet(ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        Transaction.objects.create(
-            user=request.user,
-            book=book
-        )
-
+        Transaction.objects.create(user=request.user, book=book)
         book.available_copies -= 1
         book.save()
 
-        return Response(
-            {"message": "Book checked out successfully"},
-            status=status.HTTP_200_OK
-        )
+        return Response({"message": "Book checked out successfully"}, status=status.HTTP_200_OK)
 
     # -------------------------
     # Return Book
@@ -102,6 +80,9 @@ class BookViewSet(ModelViewSet):
     @action(detail=True, methods=['post'])
     @transaction.atomic
     def return_book(self, request, pk=None):
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+
         book = self.get_object()
 
         try:
@@ -123,7 +104,4 @@ class BookViewSet(ModelViewSet):
         book.available_copies += 1
         book.save()
 
-        return Response(
-            {"message": "Book returned successfully"},
-            status=status.HTTP_200_OK
-        )
+        return Response({"message": "Book returned successfully"}, status=status.HTTP_200_OK)
