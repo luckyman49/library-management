@@ -9,16 +9,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY
 SECRET_KEY = config('SECRET_KEY')
 
-DEBUG = True
+DEBUG = True   # keep True for testing, switch to False later
 
 ALLOWED_HOSTS = [
-    "web-production-a9e4f.up.railway.app",
+    "luckymen.pythonanywhere.com",   # <-- added your PythonAnywhere domain
     "127.0.0.1",
     "localhost"
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://web-production-a9e4f.up.railway.app"
+    "https://luckymen.pythonanywhere.com"   # <-- added your PythonAnywhere domain
 ]
 
 
